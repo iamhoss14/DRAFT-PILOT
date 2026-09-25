@@ -1,19 +1,105 @@
-# DRAFT-PILOT ✍️
+# ✨ DraftPilot
 
-A full-stack, AI-powered micro-SaaS application designed to generate high-quality, perfectly formatted content instantly.
+DraftPilot is a production-oriented, AI-powered copywriting suite designed to generate, manage, and archive publication-ready content.
 
-DRAFT-PILOT separates a robust **FastAPI backend** from a sleek **Streamlit frontend**, utilizing Google's **Gemini 3.8 Flash** model to generate articles, emails, strategic briefs, and social media posts.
+It goes beyond a simple LLM wrapper by combining structured prompt architecture with persistent PostgreSQL storage, allowing users to generate content based on specific types, tones, languages, and length requirements.
+
+## 🚀 Features
+
+### 🧠 Structured Prompt Architecture
+
+DraftPilot uses structured prompts to guide the AI as a specialized copywriter based on user-defined constraints.
+
+**Content Types:**
+
+* Blog Posts
+* Emails
+* LinkedIn Posts
+* Instagram Captions
+* Product Descriptions
+* Marketing Copy
+
+**Tones:**
+
+* Professional
+* Friendly
+* Persuasive
+* Casual
+* Technical
+* Creative
+
+**Customization:**
+
+* Output Length
+* Target Language
+* Content Type
+* Writing Tone
+
+**Supported Languages:**
+
+* English
+* Persian
+* Spanish
+* French
+* German
+
+### 💾 Persistent Storage
+
+Generated content is automatically stored in a PostgreSQL database.
+
+Users can preserve their generated content instead of losing it after the application session ends.
+
+### 📚 Content Archive
+
+The **My Content** dashboard allows users to:
+
+* Browse previous generations
+* Copy generated content
+* Delete saved content
+* Review their content history
+
+### 🛡️ Resilient API
+
+DraftPilot includes:
+
+* Automatic retry mechanisms for temporary AI service failures
+* Daily IP-based rate limiting
+* Input validation through Pydantic
+* Backend error handling
 
 ---
 
-## ✨ Features
+## 🏗️ Architecture
 
-* **Decoupled Architecture:** Clean separation of concerns with a FastAPI backend handling business logic and a modern Streamlit UI for the frontend.
-* **Advanced Gemini Integration:** Powered by Google's `gemini-3.8-flash` model through the latest `google-genai` SDK.
-* **Resilient Error Handling:** Built-in automatic retry mechanisms for gracefully handling temporary `503` server congestion.
-* **Smart Rate Limiting:** Custom in-memory IP rate limiter restricting users to a defined number of requests per day to protect API quotas.
-* **Proxy Support:** Supports routing traffic through local SOCKS5 proxies for environments where direct API access may be restricted.
-* **Modern UI/UX:** Responsive, dark/light-mode compatible frontend with dynamic loading states and clean typography.
+DraftPilot uses a separated frontend/backend architecture:
+
+```text
+                User
+                  │
+                  ▼
+        ┌──────────────────┐
+        │    Streamlit     │
+        │    Frontend      │
+        └────────┬─────────┘
+                 │
+              HTTP API
+                 │
+                 ▼
+        ┌──────────────────┐
+        │     FastAPI      │
+        │     Backend      │
+        └────────┬─────────┘
+                 │
+        ┌────────┴─────────┐
+        │                  │
+        ▼                  ▼
+ ┌──────────────┐   ┌──────────────┐
+ │ Google Gemini│   │ PostgreSQL   │
+ │     API      │   │   Database   │
+ └──────────────┘   └──────────────┘
+```
+
+The Streamlit frontend is responsible for the user interface, while FastAPI handles API requests, validation, business logic, AI communication, rate limiting, and database operations.
 
 ---
 
@@ -21,7 +107,7 @@ DRAFT-PILOT separates a robust **FastAPI backend** from a sleek **Streamlit fron
 
 ### Backend
 
-* Python
+* Python 3.13
 * FastAPI
 * Uvicorn
 * Pydantic
@@ -31,19 +117,23 @@ DRAFT-PILOT separates a robust **FastAPI backend** from a sleek **Streamlit fron
 * Streamlit
 * Requests
 
-### AI / LLM
+### Database
 
-* Google GenAI SDK
-* Gemini 3.8 Flash
+* PostgreSQL
 
-### Environment & Networking
+### ORM & Database Driver
 
-* `python-dotenv`
-* `httpx[socks]`
+* SQLAlchemy
+* `psycopg` v3
+
+### AI
+
+* Google Gemini API
+* `google-genai`
 
 ---
 
-## 🚀 Getting Started
+## ⚙️ Local Setup & Installation
 
 ### 1. Clone the Repository
 
@@ -52,47 +142,67 @@ git clone https://github.com/iamhoss14/DRAFT-PILOT.git
 cd DRAFT-PILOT
 ```
 
-### 2. Set Up the Virtual Environment
-
-Create and activate a Python virtual environment:
+### 2. Create a Virtual Environment
 
 ```bash
 python -m venv venv
 ```
 
-#### Linux / macOS
+Activate it on Linux/macOS:
 
 ```bash
 source venv/bin/activate
 ```
 
-#### Windows
+On Windows:
 
 ```bash
 venv\Scripts\activate
 ```
 
-Install the required dependencies:
+### 3. Install Dependencies
+
+Install the project dependencies:
+
+```bash
+pip install fastapi uvicorn pydantic streamlit google-genai sqlalchemy "psycopg[binary]" python-dotenv requests
+```
+
+If the project contains a `requirements.txt`, you can instead use:
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
+### 4. Database Setup
 
-### 3. Configure Environment Variables
+Make sure PostgreSQL is installed and running.
 
-Create a `.env` file in the root directory of the project:
+Create the database:
 
-```text
-GEMINI_API_KEY=your_api_key_here
+```bash
+sudo -u postgres psql -c "CREATE DATABASE draftpilot;"
 ```
 
-Replace `your_api_key_here` with your Google AI Studio API key.
+If you need to configure a PostgreSQL password for local development:
 
-> **Important:** Never commit your `.env` file to GitHub. Add it to `.gitignore` to keep your API key private.
+```bash
+sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'postgres';"
+```
 
-Example `.gitignore`:
+> **Note:** The commands above are intended for local development. Do not use simple default credentials in a production environment.
+
+### 5. Environment Variables
+
+Create a `.env` file in the project root:
+
+```text
+GEMINI_API_KEY=your_actual_api_key_here
+```
+
+Never commit your `.env` file to GitHub.
+
+Make sure `.gitignore` contains:
 
 ```text
 .env
@@ -105,9 +215,9 @@ __pycache__/
 
 ## ▶️ Running the Application
 
-The backend and frontend must run simultaneously in two separate terminal windows.
+The backend and frontend need to run simultaneously in two terminal windows.
 
-### Terminal 1: Backend
+### Terminal 1: FastAPI Backend
 
 Activate the virtual environment:
 
@@ -115,21 +225,25 @@ Activate the virtual environment:
 source venv/bin/activate
 ```
 
-Start the FastAPI server:
+Start the backend:
 
 ```bash
-./venv/bin/uvicorn app.main:app --reload
+uvicorn app.main:app --reload
 ```
 
-The FastAPI backend will be available at:
+The FastAPI server will run at:
 
 ```text
 http://127.0.0.1:8000
 ```
 
----
+FastAPI's interactive API documentation is available at:
 
-### Terminal 2: Frontend
+```text
+http://127.0.0.1:8000/docs
+```
+
+### Terminal 2: Streamlit Frontend
 
 Activate the virtual environment:
 
@@ -137,13 +251,13 @@ Activate the virtual environment:
 source venv/bin/activate
 ```
 
-Start the Streamlit application:
+Start the frontend:
 
 ```bash
 streamlit run app/ui.py
 ```
 
-The Streamlit frontend will be available at:
+The Streamlit application will normally be available at:
 
 ```text
 http://localhost:8501
@@ -151,62 +265,111 @@ http://localhost:8501
 
 ---
 
-## 🏗️ Architecture
-
-DRAFT-PILOT follows a decoupled frontend/backend architecture:
-
-```text
-                    User
-                      │
-                      ▼
-             ┌─────────────────┐
-             │ Streamlit UI    │
-             │   Frontend      │
-             └────────┬────────┘
-                      │
-                 HTTP Requests
-                      │
-                      ▼
-             ┌─────────────────┐
-             │    FastAPI      │
-             │    Backend      │
-             └────────┬────────┘
-                      │
-                      ▼
-             ┌─────────────────┐
-             │ Google Gemini   │
-             │   AI Model      │
-             └─────────────────┘
-```
-
-The Streamlit frontend is responsible for user interaction, while the FastAPI backend handles API requests, business logic, rate limiting, and communication with the Gemini API.
-
----
-
 ## 🗺️ Roadmap
 
-Upcoming features and improvements:
+### Phase 1: Core AI Integration
 
-* [ ] **Database Integration:** Implement PostgreSQL to permanently store generated content and user history.
-* [ ] **Data Analytics:** Integrate Pandas to analyze content generation trends and request volumes.
-* [ ] **MLOps Foundations:** Add detailed performance logging, latency tracking, monitoring, and advanced prompt versioning.
-* [ ] **User Authentication:** Replace IP-based rate limiting with secure JWT-based user accounts.
-* [ ] **Content History:** Allow users to view and manage previously generated content.
-* [ ] **Prompt Templates:** Provide predefined templates for common content-generation workflows.
-* [ ] **Production Deployment:** Deploy the backend and frontend using production-ready infrastructure.
+* [x] FastAPI backend
+* [x] Streamlit frontend
+* [x] Gemini API integration
+* [x] Basic content generation
+* [x] API error handling
+
+### Phase 2: Prompt Architecture
+
+* [x] Structured prompt system
+* [x] Multiple content types
+* [x] Multiple writing tones
+* [x] Language selection
+* [x] Output length control
+* [x] Specialized content generation
+
+### Phase 3: Persistent Storage
+
+* [x] PostgreSQL integration
+* [x] SQLAlchemy integration
+* [x] Persistent content storage
+* [x] Content history
+* [x] My Content dashboard
+* [x] Delete generated content
+
+### Phase 4: Authentication
+
+* [ ] User registration
+* [ ] User login
+* [ ] Password hashing
+* [ ] JWT authentication
+* [ ] Protected API endpoints
+* [ ] User-isolated content
+* [ ] User-specific workspaces
+
+### Phase 5: SaaS Features
+
+* [ ] User usage tracking
+* [ ] Credit system
+* [ ] Free plan
+* [ ] Pro plan
+* [ ] Subscription management
+* [ ] Payment integration
+* [ ] Payment webhooks
+
+### Phase 6: Production Engineering
+
+* [ ] Automated testing
+* [ ] Docker
+* [ ] CI/CD
+* [ ] Production deployment
+* [ ] Application logging
+* [ ] Monitoring
+* [ ] Health checks
+* [ ] Production database configuration
+
+### Phase 7: AI Engineering
+
+* [ ] Prompt versioning
+* [ ] Token usage tracking
+* [ ] AI cost tracking
+* [ ] Generation latency tracking
+* [ ] Prompt evaluation
+* [ ] Output quality evaluation
+* [ ] Model comparison
 
 ---
 
-## 🔐 Security
+## 📈 Project Vision
 
-DRAFT-PILOT uses environment variables for sensitive configuration such as API keys.
-
-Never expose your Gemini API key directly in source code.
-
-Before committing your project, make sure `.env` is included in `.gitignore`:
+The long-term goal of DraftPilot is to evolve from an AI content generation application into a complete SaaS platform.
 
 ```text
-.env
+MVP
+ │
+ ├── AI Generation
+ ├── Prompt Architecture
+ └── Streamlit UI
+        │
+        ▼
+Persistent Application
+ │
+ ├── PostgreSQL
+ ├── Content History
+ └── Data Management
+        │
+        ▼
+Multi-User SaaS
+ │
+ ├── Authentication
+ ├── User Workspaces
+ ├── Usage Tracking
+ └── Subscription Plans
+        │
+        ▼
+Production SaaS
+ │
+ ├── Payments
+ ├── Docker
+ ├── CI/CD
+ ├── Monitoring
+ └── Deployment
 ```
 
 ---
@@ -215,10 +378,34 @@ Before committing your project, make sure `.env` is included in `.gitignore`:
 
 **Amirhossein Afzali**
 
-* GitHub: [@iamhoss14](https://github.com/iamhoss14)
+GitHub: [@iamhoss14](https://github.com/iamhoss14)
 
 ---
 
 ## 📄 License
 
-This project is currently intended for educational and development purposes.
+This project is currently developed for educational, portfolio, and product-development purposes.
+
+---
+
+## 🔄 Git Workflow
+
+After updating the README:
+
+```bash
+git add README.md
+git commit -m "Update README with Phase 2 and Phase 3 features"
+git push origin main
+```
+
+Check the repository status with:
+
+```bash
+git status
+```
+
+A clean working tree should show:
+
+```text
+nothing to commit, working tree clean
+```
