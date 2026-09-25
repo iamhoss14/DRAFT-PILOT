@@ -1,94 +1,127 @@
 import streamlit as st
 import requests
+from datetime import datetime
 
-# 1. Page Config
-st.set_page_config(page_title="DraftPilot | AI Writer", page_icon="✨", layout="centered")
+st.set_page_config(page_title="DraftPilot | AI Suite", page_icon="✨", layout="centered")
 
-# 2. Safe, Modern CSS that respects Dark/Light Mode
+# Custom CSS for polished inputs and clean card styling
 st.markdown("""
     <style>
-    /* Clean up the text area for maximum readability */
-    .stTextArea textarea {
-        font-size: 16px !important;
-        border-radius: 10px !important;
-        padding: 16px !important;
-        line-height: 1.5;
-        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.05);
-    }
-    
-    /* Sleek subtext styling */
-    .header-subtext {
-        font-size: 1.1rem;
-        color: #888;
-        margin-top: -15px;
-        margin-bottom: 25px;
-        font-weight: 300;
-    }
-    
-    /* Better button spacing */
-    .stButton>button {
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        padding: 10px 24px !important;
-    }
+    .stTextArea textarea { font-size: 16px !important; border-radius: 10px !important; padding: 12px !important; }
+    .stButton>button { border-radius: 8px !important; font-weight: 600 !important; }
+    .history-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Modern Sidebar Configuration
-with st.sidebar:
-    st.header("⚙️ Configuration")
-    st.markdown("Fine-tune the AI output.")
-    
-    tone = st.selectbox("Tone", ["Executive", "Conversational", "Technical", "Direct", "Creative"])
-    format_type = st.selectbox("Format", ["Article", "Email", "Strategic Brief", "Social Post"])
-    
+st.title("✨ DraftPilot")
+st.markdown("Your intelligent copywriting suite backed by persistent storage.")
+
+# Initialize Session State
+if "generated_text" not in st.session_state:
+    st.session_state.generated_text = None
+
+# Navigation Tabs
+tab_create, tab_history = st.tabs(["✍️ Draft Workspace", "📚 My Content"])
+
+# --- TAB 1: DRAFT WORKSPACE ---
+with tab_create:
+    st.markdown("Specify your parameters to generate publication-ready dispatches.")
     st.divider()
-    st.caption("Engine: FastAPI | Model: Gemini 3.8-Flash")
 
-# 4. Main UI Header
-st.title("✨ DraftPilot AI")
-st.markdown('<div class="header-subtext">Your intelligent drafting assistant.</div>', unsafe_allow_html=True)
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        content_type = st.selectbox("Content Type", [
+            "Blog Post", "Email", "LinkedIn Post", 
+            "Instagram Caption", "Product Description", "Marketing Copy"
+        ])
+    with col2:
+        tone = st.selectbox("Tone", [
+            "Professional", "Friendly", "Persuasive", 
+            "Casual", "Technical", "Creative"
+        ])
+    with col3:
+        length = st.selectbox("Length", ["Short", "Medium", "Long"])
+    with col4:
+        language = st.selectbox("Language", ["English", "Persian", "Spanish", "French", "German"])
 
-# 5. Input Area
-topic = st.text_area(
-    "What are we working on today?",
-    placeholder="Type your topic here... (e.g., A technical overview of API rate limiting)",
-    height=150
-)
+    topic = st.text_area("Topic", placeholder='"How AI is transforming software engineering..."', height=100)
 
-# 6. Action Button & Logic
-if st.button("Generate Content 🚀", type="primary", use_container_width=True):
-    if not topic.strip():
-        st.warning("⚠️ Please enter a topic to begin.")
-    else:
-        # Beautiful loading state
-        with st.status("Processing your request...", expanded=True) as status:
-            st.write("Initiating secure connection...")
-            st.write("Drafting content with Gemini...")
+    def fetch_content():
+        if not topic.strip():
+            st.warning("⚠️ Please provide a subject matter before proceeding.")
+            return
             
+        with st.status("Executing prompt and logging to database...", expanded=True) as status:
             try:
-                payload = {"topic": topic, "tone": tone, "format_type": format_type}
+                payload = {
+                    "content_type": content_type,
+                    "topic": topic,
+                    "tone": tone,
+                    "length": length,
+                    "language": language
+                }
                 response = requests.post("http://127.0.0.1:8000/generate", json=payload)
                 
                 if response.status_code == 200:
                     data = response.json()
-                    status.update(label="Document Ready!", state="complete", expanded=False)
-                    
-                    # Clean display of remaining limits
-                    st.success(f"API Requests Remaining Today: **{data['remaining_requests']} / 2**")
-                    
-                    # Premium output container
-                    st.subheader("📄 Generated Document")
-                    with st.container(border=True):
-                        st.write(data['result'])
-                        
+                    st.session_state.generated_text = data['content']
+                    status.update(label="Complete and Saved to PostgreSQL!", state="complete", expanded=False)
                 elif response.status_code == 429:
                     status.update(label="Limit Reached", state="error")
-                    st.error("🛑 Daily capacity reached. Please try again tomorrow.")
+                    st.error("🛑 Daily quota reached. Please try again tomorrow.")
                 else:
-                    status.update(label="System Error", state="error")
-                    st.error(f"Failed to generate: Error {response.status_code}")
-                    
+                    status.update(label="Error", state="error")
+                    st.error(f"API Error {response.status_code}: {response.text}")
             except Exception as e:
-                status.update(label="Connection Error", state="error")
-                st.error(f"Could not connect to the backend. Ensure FastAPI is running! Error: {str(e)}")
+                status.update(label="Error", state="error")
+                st.error(f"Could not connect to FastAPI backend. Error: {str(e)}")
+
+    if st.button("Generate 🚀", type="primary", use_container_width=True):
+        fetch_content()
+
+    if st.session_state.generated_text:
+        st.divider()
+        st.subheader("📄 Active Document")
+        st.code(st.session_state.generated_text, language="markdown")
+        
+        if st.button("Regenerate 🔄", use_container_width=True):
+            fetch_content()
+
+# --- TAB 2: MY CONTENT (HISTORY) ---
+with tab_history:
+    st.subheader("📚 Saved Generations")
+    st.caption("All dispatches recorded in your PostgreSQL database.")
+    
+    col_ref, _ = st.columns([1, 3])
+    with col_ref:
+        if st.button("Refresh History 🔄", use_container_width=True):
+            st.rerun()
+
+    try:
+        response = requests.get("http://127.0.0.1:8000/generations")
+        if response.status_code == 200:
+            generations = response.json()
+            
+            if not generations:
+                st.info("No saved records found. Draft your first piece in the workspace!")
+            else:
+                for item in generations:
+                    created_time = datetime.fromisoformat(item["created_at"]).strftime("%B %d, %Y - %H:%M")
+                    
+                    with st.expander(f"{item['content_type']} — {created_time}"):
+                        st.caption(f"**Record ID:** {item['id']}")
+                        st.code(item["content"], language="markdown")
+                        
+                        col_del, _ = st.columns([1, 4])
+                        with col_del:
+                            if st.button("Delete 🗑️", key=f"del_{item['id']}", use_container_width=True):
+                                del_res = requests.delete(f"http://127.0.0.1:8000/generations/{item['id']}")
+                                if del_res.status_code == 200:
+                                    st.success("Entry deleted.")
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to delete record.")
+        else:
+            st.error(f"Failed to fetch history (Status {response.status_code})")
+    except Exception as e:
+        st.error(f"Could not connect to database backend: {str(e)}")
